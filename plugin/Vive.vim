@@ -1,19 +1,14 @@
 " Vim plugin for Vim interpreter and virtual executor
 " Language:    vim script
 " Maintainer:  Dave Silvia <dsilvia@mchsi.com>
-" Date:        8/19/2004
+" Date:        8/24/2004
 "
-"
-" Version 1.0 initial release
-"
-" Version 1.1
+" Version 1.3
 "  Fixed:
-"    -  Problem with multiple windows
-"       putting the 'Results:' label
-"       in the wrong window.
-"  Added:
-"    -  Some new command line switches
-"    -  Performance enhancements
+"    -  If command opens new edit
+"       buffers, be sure to return
+"       to the Vive window/buffer
+"       on completion of ViveFunc
 "
 " Version 1.2
 "  Fixed:
@@ -35,6 +30,17 @@
 "       eliminate the problem.
 "       Not sure why this happens,
 "       it just does!:-<
+"
+" Version 1.1
+"  Fixed:
+"    -  Problem with multiple windows
+"       putting the 'Results:' label
+"       in the wrong window.
+"  Added:
+"    -  Some new command line switches
+"    -  Performance enhancements
+"
+" Version 1.0 initial release
 
 if !exists("g:ViveFile")
 	let g:ViveFile=fnamemodify(expand("~/.Vive.vim"),":p")
@@ -308,7 +314,7 @@ function! s:Vive(...)
 	" (which sets readonly???) it causes a Warning.
 	" So, we do it on purpose and correct the problem
 	silent :r !ls
-	normal u
+	silent normal u
 	set noreadonly
 	" Put the highlight link first to fool syntax clear into thinking we've got
 	" a group named VivePrmpt if one doesn't already exist.  It's cheaper
@@ -328,6 +334,23 @@ function! s:Vive(...)
 	DoIfInsert
 endfunction
 
+function! s:saveVive()
+	let s:ViveWin=bufwinnr(g:ViveFile)
+	let s:ViveBuf=bufnr(g:ViveFile)
+	let s:clnum=line('.')
+	let s:ccnum=col('.')
+endfunction
+
+function! s:restoreVive()
+	if winnr() != s:ViveWin
+		execute s:ViveWin.'wincmd w'
+	endif
+	if bufname(bufnr('')) != g:ViveFile
+		execute 'b'.s:ViveBuf
+	endif
+	call cursor(s:clnum,s:ccnum)
+endfunction
+
 " elnum == ending line number
 " clnum == current line number
 " olnum == origin line number
@@ -343,7 +366,7 @@ function! s:GetViveLines()
 	let olnum=elnum
 	let clnum=search('^'.g:VivePrmpt.'$','bW')
 	let clnum=clnum+1
-	execute clnum.','.elnum.'yank "'
+	execute 'silent '.clnum.','.elnum.'yank "'
 	let funcBody=substitute(@","\<NL>\\+$",'','')
 	if funcBody =~ '^\s*$'
 		normal j
@@ -357,7 +380,9 @@ function! s:GetViveLines()
 	let olnum=olnum+1
 	let clnum=line('.')
 	call setline(clnum,g:ViveRslt)
+	call s:saveVive()
 	call s:RedirNoEcho()
+	call s:restoreVive()
 	delfunction ViveFunc
 	execute 'normal '.olnum.'G'
 	let saveCPO=&cpoptions
