@@ -60,6 +60,9 @@ endif
 if !exists("g:ViveDebug")
 	let g:ViveDebug=0
 endif
+if !exists("g:ViveQQ")
+	let g:ViveQQ='??'
+endif
 
 function! s:doGvimMenu()
 	if has("gui_running")
@@ -70,7 +73,7 @@ function! s:doGvimMenu()
 		execute s:menuIt
 		let s:menuIt='amenu &Vive.Delete\ &All\ Vive\ Statement\ Results<TAB>'.g:ViveDAR.' :call <SID>deleteAllRslt()<CR>' 
 		execute s:menuIt
-		let s:menuIt='amenu &Vive.Clear\ Vive\ Window<TAB>'.g:ViveCLS.' :call <SID>cls()<CR>' 
+		let s:menuIt='amenu &Vive.&Clear\ Vive\ Window<TAB>'.g:ViveCLS.' :call <SID>cls()<CR>' 
 		execute s:menuIt
 		function! s:doMenuIfInsert()
 			let g:ViveModeInsert=1-g:ViveModeInsert
@@ -99,6 +102,22 @@ augroup Vive
 	autocmd BufDelete * call s:isViveRunning(expand("<afile>"))
 augroup END
 
+function! s:doUnMap(name)
+	let sname='s:prev'.a:name
+	let siname='s:iprev'.a:name
+	let gname='g:Vive'.a:name
+	execute 'unmap '.{gname}
+	execute 'iunmap '.{gname}
+	if {sname} != ''
+		let {sname}=substitute({sname},'|','|','g')
+		execute 'map '.{gname}.' '.{sname}
+	endif
+	if {siname} != ''
+		let {siname}=substitute({siname},'|','|','g')
+		execute 'imap '.{gname}.' '.{siname}
+	endif
+endfunction
+
 function! s:isViveRunning(file)
 	if !exists("g:ViveRunning") || a:file != g:ViveFile
 		return
@@ -109,118 +128,14 @@ function! s:isViveRunning(file)
 	execute 'bwipeout '.bufnr(g:ViveFile)
 	call s:delFile(g:ViveFile)
 	delcommand DoIfInsert
-	execute 'unmap '.g:ViveInterpret
-	if s:prevInterpret != ''
-		if match(s:prevInterpret,'|') != -1
-			let s:prevInterpret=substitute(s:prevInterpret,'|','|','g')
-		endif
-		execute 'map '.g:ViveInterpret.' '.s:prevInterpret
-	endif
-	execute 'iunmap '.g:ViveInterpret
-	if s:iprevInterpret != ''
-		if match(s:iprevInterpret,'|') != -1
-			let s:iprevInterpret=substitute(s:iprevInterpret,'|','|','g')
-		endif
-		execute 'imap '.g:ViveInterpret.' '.s:iprevInterpret
-	endif
-	execute 'unmap '.g:ViveDVive
-	if s:prevDVive != ''
-		if match(s:prevDVive,'|') != -1
-			let s:prevDVive=substitute(s:prevDVive,'|','|','g')
-		endif
-		execute 'map '.g:ViveDVive.' '.s:prevDVive
-	endif
-	execute 'iunmap '.g:ViveDVive
-	if s:iprevDVive != ''
-		if match(s:iprevDVive,'|') != -1
-			let s:iprevDVive=substitute(s:iprevDVive,'|','|','g')
-		endif
-		execute 'imap '.g:ViveDVive.' '.s:iprevDVive
-	endif
-	execute 'unmap '.g:ViveDRslt
-	if s:prevDRslt != ''
-		if match(s:prevDRslt,'|') != -1
-			let s:prevDRslt=substitute(s:prevDRslt,'|','|','g')
-		endif
-		execute 'map '.g:ViveDRslt.' '.s:prevDRslt
-	endif
-	execute 'iunmap '.g:ViveDRslt
-	if s:iprevDRslt != ''
-		if match(s:iprevDRslt,'|') != -1
-			let s:iprevDRslt=substitute(s:iprevDRslt,'|','|','g')
-		endif
-		execute 'imap '.g:ViveDRslt.' '.s:iprevDRslt
-	endif
-	execute 'unmap '.g:ViveDAR
-	if s:prevDAR != ''
-		if match(s:prevDAR,'|') != -1
-			let s:prevDAR=substitute(s:prevDAR,'|','|','g')
-		endif
-		execute 'map '.g:ViveDAR.' '.s:prevDAR
-	endif
-	execute 'iunmap '.g:ViveDAR
-	if s:iprevDAR != ''
-		if match(s:iprevDAR,'|') != -1
-			let s:iprevDAR=substitute(s:iprevDAR,'|','|','g')
-		endif
-		execute 'imap '.g:ViveDAR.' '.s:iprevDAR
-	endif
-	execute 'unmap '.g:ViveCLS
-	if s:prevCLS != ''
-		if match(s:prevCLS,'|') != -1
-			let s:prevCLS=substitute(s:prevCLS,'|','|','g')
-		endif
-		execute 'map '.g:ViveCLS.' '.s:prevCLS
-	endif
-	execute 'iunmap '.g:ViveCLS
-	if s:iprevCLS != ''
-		if match(s:iprevCLS,'|') != -1
-			let s:iprevCLS=substitute(s:iprevCLS,'|','|','g')
-		endif
-		execute 'imap '.g:ViveCLS.' '.s:iprevCLS
-	endif
-	execute 'unmap '.g:ViveTI
-	if s:prevTI != ''
-		if match(s:prevTI,'|') != -1
-			let s:prevTI=substitute(s:prevTI,'|','|','g')
-		endif
-		execute 'map '.g:ViveTI.' '.s:prevTI
-	endif
-	execute 'iunmap '.g:ViveTI
-	if s:iprevTI != ''
-		if match(s:iprevTI,'|') != -1
-			let s:iprevTI=substitute(s:iprevTI,'|','|','g')
-		endif
-		execute 'imap '.g:ViveTI.' '.s:iprevTI
-	endif
-	execute 'unmap '.g:ViveDBG
-	if s:prevDBG != ''
-		if match(s:prevDBG,'|') != -1
-			let s:prevDBG=substitute(s:prevDBG,'|','|','g')
-		endif
-		execute 'map '.g:ViveDBG.' '.s:prevDBG
-	endif
-	execute 'iunmap '.g:ViveDBG
-	if s:iprevDBG != ''
-		if match(s:iprevDBG,'|') != -1
-			let s:iprevDBG=substitute(s:iprevDBG,'|','|','g')
-		endif
-		execute 'imap '.g:ViveDBG.' '.s:iprevDBG
-	endif
-	unmap ??
-	if s:prevqq != ''
-		if match(s:prevqq,'|') != -1
-			let s:prevqq=substitute(s:prevqq,'|','|','g')
-		endif
-		execute 'map ?? '.s:prevqq
-	endif
-	iunmap ??
-	if s:iprevqq != ''
-		if match(s:iprevqq,'|') != -1
-			let s:iprevqq=substitute(s:iprevqq,'|','|','g')
-		endif
-		execute 'imap ?? '.s:iprevqq
-	endif
+	call s:doUnMap('Interpret')
+	call s:doUnMap('DVive')
+	call s:doUnMap('DRslt')
+	call s:doUnMap('DAR')
+	call s:doUnMap('CLS')
+	call s:doUnMap('TI')
+	call s:doUnMap('DBG')
+	call s:doUnMap('QQ')
 	unlet g:ViveRunning
 endfunction
 
@@ -260,42 +175,42 @@ function! s:usage()
 	while strlen(DBG) < 14
 		let DBG=DBG.' '
 	endwhile
-	echomsg " "
+	echo " "
 	echohl Title
-	echomsg "              Vim interpreter and virtual executor"
-	echomsg " "
+	echo "              Vim interpreter and virtual executor"
+	echo " "
 	echohl Statement
-	echomsg "Vive[ -p <prmpt>][ -r <rsltLbl>][ -t <mapSeq>][ -H <HLGrp>]"
-	echomsg "    [ -i][ -v <vboseLvl>][ -h]"
+	echo "Vive[ -p <prmpt>][ -r <rsltLbl>][ -t <mapSeq>][ -H <HLGrp>]"
+	echo "    [ -i][ -v <vboseLvl>][ -h]"
 	echohl NonText
-	echomsg "  -p          set prompt to <prmpt>"
-	echomsg "  -r          set result label to <rsltLbl>"
-	echomsg "  -t          set end of input mapping sequence to <mapSeq>"
-	echomsg "  -H          set highlight group for prompt/label to <HLGrp>"
-	echomsg "  -i          toggle insert mode (default is insert mode)"
-	echomsg "  -v          set verbose level to <vboseLvl>"
-	echomsg "  -h          produces this message {or press ??}"
-	echomsg "  You can set verbose on the fly with the command ViveVbose lvl"
-	echomsg "  Values set by the above switches may be set in your vimrc"
-	echomsg "  See: ".s:thisScript
-	echomsg "       for the global variables you may set"
-	echomsg " "
+	echo "  -p          set prompt to <prmpt>"
+	echo "  -r          set result label to <rsltLbl>"
+	echo "  -t          set end of input mapping sequence to <mapSeq>"
+	echo "  -H          set highlight group for prompt/label to <HLGrp>"
+	echo "  -i          toggle insert mode (default is insert mode)"
+	echo "  -v          set verbose level to <vboseLvl>"
+	echo "  -h          produces this message {or press ??}"
+	echo "  You can set verbose on the fly with the command ViveVbose lvl"
+	echo "  Values set by the above switches may be set in your vimrc"
+	echo "  See: ".s:thisScript
+	echo "       for the global variables you may set"
+	echo " "
 	echohl Title
-	echomsg "NOTE: 'tags' for context sensitive help is enabled in Vive"
-	echomsg " "
+	echo "NOTE: 'tags' for context sensitive help is enabled in Vive"
+	echo " "
 	echohl Statement
-	echomsg "Commands:"
+	echo "Commands:"
 	echohl NonText
-	echomsg endInpUsage."to indicate end of input for interpretation"
-	echomsg delVive."to delete cursor contained complete Vive statement"
-	echomsg delRslt."to delete cursor contained result of Vive statement"
-	echomsg DAR."to delete results of all Vive statements"
-	echomsg CLS."to clear the interpreter buffer"
-	echomsg TI."to toggle insert mode (default is insert mode)"
-	echomsg DBG."to toggle debug mode (default is no debug mode)"
-	echomsg " "
+	echo endInpUsage."to indicate end of input for interpretation"
+	echo delVive."to delete cursor contained complete Vive statement"
+	echo delRslt."to delete cursor contained result of Vive statement"
+	echo DAR."to delete results of all Vive statements"
+	echo CLS."to clear the interpreter buffer"
+	echo TI."to toggle insert mode (default is insert mode)"
+	echo DBG."to toggle debug mode (default is no debug mode)"
+	echo " "
 	echohl Cursor
-	echomsg "        Press a key to continue"
+	echo "        Press a key to continue"
 	call getchar()
 	echohl None
 	set ch=1
@@ -304,6 +219,16 @@ function! s:usage()
 		DoIfInsert
 	endif
 	let &ch=savech
+endfunction
+
+function! s:doMap(name,val)
+	let sname='s:prev'.a:name
+	let siname='s:iprev'.a:name
+	let gname='g:Vive'.a:name
+	let {sname}=maparg({gname})
+	let {siname}=maparg({gname},'i')
+	execute 'map <silent> '.{gname}.' '.a:val.'<CR>'
+	execute 'imap <silent> '.{gname}.' <Esc>'.a:val.'<CR>'
 endfunction
 
 command! -nargs=1 ViveVbose let g:ViveVerbose=<args>
@@ -346,38 +271,14 @@ function! s:Vive(...)
 		new
 	endif
 	command! DoIfInsert if g:ViveModeInsert | :startinsert! | endif
-	let s:prevInterpret=maparg(g:ViveInterpret)
-	let s:iprevInterpret=maparg(g:ViveInterpret,'i')
-	execute 'map <silent> '.g:ViveInterpret.' :call <SID>GetViveLines()<CR>'
-	execute 'imap <silent> '.g:ViveInterpret.' <Esc>:call <SID>GetViveLines()<CR>'
-	let s:prevDVive=maparg(g:ViveDVive)
-	let s:iprevDVive=maparg(g:ViveDVive,'i')
-	execute 'map <silent> '.g:ViveDVive.' :call <SID>deleteLast("v")<CR>'
-	execute 'imap <silent> '.g:ViveDVive.' <Esc>:call <SID>deleteLast("v")<CR>'
-	let s:prevDRslt=maparg(g:ViveDRslt)
-	let s:iprevDRslt=maparg(g:ViveDRslt,'i')
-	execute 'map <silent> '.g:ViveDRslt.' :call <SID>deleteLast("r")<CR>'
-	execute 'imap <silent> '.g:ViveDRslt.' <Esc>:call <SID>deleteLast("r")<CR>'
-	let s:prevDAR=maparg(g:ViveDAR)
-	let s:iprevDAR=maparg(g:ViveDAR,'i')
-	execute 'map <silent> '.g:ViveDAR.' :call <SID>deleteAllRslt()<CR>'
-	execute 'imap <silent> '.g:ViveDAR.' <Esc>:call <SID>deleteAllRslt()<CR>'
-	let s:prevCLS=maparg(g:ViveCLS)
-	let s:iprevCLS=maparg(g:ViveCLS,'i')
-	execute 'map <silent> '.g:ViveCLS.' :call <SID>cls()<CR>'
-	execute 'imap <silent> '.g:ViveCLS.' <Esc>:call <SID>cls()<CR>'
-	let s:prevTI=maparg(g:ViveTI)
-	let s:iprevTI=maparg(g:ViveTI,'i')
-	execute 'map <silent> '.g:ViveTI.' :let g:ViveModeInsert=1-g:ViveModeInsert | DoIfInsert<CR>'
-	execute 'imap <silent> '.g:ViveTI.' <Esc>:let g:ViveModeInsert=1-g:ViveModeInsert | DoIfInsert<CR>'
-	let s:prevDBG=maparg(g:ViveDBG)
-	let s:iprevDBG=maparg(g:ViveDBG,'i')
-	execute 'map <silent> '.g:ViveDBG.' :let g:ViveDebug=1-g:ViveDebug<CR>'
-	execute 'imap <silent> '.g:ViveDBG.' <Esc>:let g:ViveDebug=1-g:ViveDebug<CR>'
-	let s:prevqq=maparg('??')
-	let s:iprevqq=maparg('??','i')
-	map <silent> ?? :call <SID>usage()<CR>
-	imap <silent> ?? <Esc>:call <SID>usage()<CR>
+	call s:doMap('Interpret',':call <SID>GetViveLines()')
+	call s:doMap('DVive',':call <SID>deleteLast("v")')
+	call s:doMap('DRslt',':call <SID>deleteLast("r")')
+	call s:doMap('DAR',':call <SID>deleteAllRslt()')
+	call s:doMap('CLS',':call <SID>cls()')
+	call s:doMap('TI',':let g:ViveModeInsert=1-g:ViveModeInsert | DoIfInsert')
+	call s:doMap('DBG',':let g:ViveDebug=1-g:ViveDebug')
+	call s:doMap('QQ',':call <SID>usage()')
 	call s:doGvimMenu()
 	call s:delFile(g:ViveFile)
 	execute 'edit '.g:ViveFile
@@ -476,13 +377,13 @@ function! s:RedirNoEcho()
 	if g:ViveVerbose <= 1
 		set nomodified
 		if !g:ViveDebug
-			call ViveFunc()
+			silent call ViveFunc()
 		else
 			:debug call ViveFunc()
 		endif
 	endif
 	redir END
-	call s:isItMe()
+"	call s:isItMe()
 	let &more=savemore
 	"this avoids the final 'Hit Enter' prompt if it's there.  For some reason
 	"'set nomore' doesn't turn the last one off.
@@ -560,13 +461,13 @@ function! s:isItMe()
 	let ViveWinnr=bufwinnr(g:ViveFile)
 	if ViveWinnr != -1
 		execute ViveWinnr.'wincmd w'
-	elseif bufname('') != g:ViveFile
+	elseif fnamemodify(bufname(''),":p") != g:ViveFile
 		" if we're not in any window, put us in the current one. Some
 		" command/script that was executed via Vive probably splatted on top of
 		" Vive, now we need to go back to complete execution.
 		execute 'b'.bufnr(g:ViveFile)
 	endif
-	if bufname('') == g:ViveFile
+	if fnamemodify(bufname(''),":p") == g:ViveFile
 		if &readonly
 			set noreadonly
 		endif
