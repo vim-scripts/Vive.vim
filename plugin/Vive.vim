@@ -3,6 +3,17 @@
 " Maintainer:  Dave Silvia <dsilvia@mchsi.com>
 " Date:        8/24/2004
 "
+" Version 2.0.1
+" Date:        10/5/2004
+"  Added:
+"   -  Check for VSUTIL
+"   -  save of cpoptions and reset
+"      after removing C to allow
+"      continuation lines
+"  Fixed:
+"   -  Continuation lines
+"      in input script.
+"
 " Version 2.0
 " Date:        9/21/2004
 "  Added:
@@ -50,6 +61,22 @@
 "
 " Version 1.0 initial release
 
+let s:thisScript=expand("<sfile>:p")
+let s:myName=fnamemodify(s:thisScript,":t")
+
+if !exists('g:VSUTIL')
+	silent! runtime plugin/vsutil.vim
+	if !exists('g:VSUTIL') || g:VSUTILMAJ < 1 || g:VSUTILMIN < 4
+		echohl Errormsg
+		echomsg s:myName.": Requires Version 1.4 or higher of vsutil.vim"
+		echomsg "Go to http://www.vim.org/account/profile.php?user_id=5397 for link to vsutil.vim"
+		echohl None
+		finish
+	endif
+endif
+
+let s:saveCPO=&cpoptions
+set cpoptions-=C
 if !exists("g:ViveBrowseDir")
 	let RTdirs=expand(&runtimepath)
 	if !exists("*StrListTok")
@@ -193,7 +220,7 @@ function! s:doGvimMenu()
 	amenu &Vive.Vim\ &Verbose.==&0\ off<TAB>:set\ verbose=0 :call <SID>doVimVerbose(0)<CR>
 	amenu &Vive.Vim\ &Verbose.>=&1\ r/w\ viminfo<TAB>:set\ verbose=1 :call <SID>doVimVerbose(1)<CR>
 	amenu &Vive.Vim\ &Verbose.>=&2\ source\ <file><TAB>:set\ verbose=2 :call <SID>doVimVerbose(2)<CR>
-	amenu &Vive.Vim\ &Verbose.>=&5\ search\ tags\ file<TAB>:set\ verbose\ 5 :call <SID>doVimVerbose(5)<CR>
+	amenu &Vive.Vim\ &Verbose.>=&5\ search\ tags\ file<TAB>:set\ verbose=5 :call <SID>doVimVerbose(5)<CR>
 	amenu &Vive.Vim\ &Verbose.>=&8\ autocmd\ file<TAB>:set\ verbose=8 :call <SID>doVimVerbose(8)<CR>
 	amenu &Vive.Vim\ &Verbose.>=&9\ autocmd\ execution<TAB>:set\ verbose=9 :call <SID>doVimVerbose(9)<CR>
 	amenu &Vive.Vim\ &Verbose.>=&12\ function\ execution<TAB>:set\ verbose=12 :call <SID>doVimVerbose(12)<CR>
@@ -349,8 +376,6 @@ function! s:doGvimMenu()
 	endfunction
 	call s:DoDebugModeMenu()
 endfunction
-
-let s:thisScript=expand("<sfile>:p")
 
 let g:cmdlineHit=0
 
@@ -606,7 +631,7 @@ function! s:GetViveLines()
 		DoIfInsert
 		return
 	endif
-	let @"="function! ViveFunc()\<NL>".@"."endfunction\<NL>"
+	let @"="function! ViveFunc()\<NL>".substitute(@","\<NL>\\s*\\",'','g')."endfunction\<NL>"
 	silent :@"
 	execute 'normal '.olnum.'G'
 	normal o
@@ -622,9 +647,9 @@ function! s:GetViveLines()
 	"don't need any compatibility options to read the file
 	set cpoptions=
 	execute 'silent :r '.g:ViveRsltFile
+	let &cpoptions=saveCPO
 	"reading the file sets readonly; correct this
 	set noreadonly
-	let &cpoptions=saveCPO
 	call s:delFile(g:ViveRsltFile)
 	let elnum=search('^\('.g:ViveRslt.'\|'.g:VivePrmpt.'\)$\|\%$','W')
 	if elnum == 0
@@ -767,9 +792,11 @@ function! s:delFile(fname)
 	endif
 	echohl Warningmsg
 	echomsg expand("<sfile>").": Could not delete <".fname.">"
-	echomsg "Reason: ".v:exception
+	echomsg "Reason: ".v:errmsg
 	echohl Cursor
 	echomsg "        Press a key to continue"
 	echohl None
 	call getchar()
 endfunction
+
+let &cpoptions=s:saveCPO
