@@ -3,6 +3,14 @@
 " Maintainer:  Dave Silvia <dsilvia@mchsi.com>
 " Date:        8/24/2004
 "
+" Version 2.0
+" Date:        9/21/2004
+"  Added:
+"    -  Menu item for Read Script
+"    -  Menu item for Execute Script
+"    -  Menu item Vim verbose mode
+"    -  Menu item for debug mode
+"
 " Version 1.3
 "  Fixed:
 "    -  If command opens new edit
@@ -42,11 +50,35 @@
 "
 " Version 1.0 initial release
 
+if !exists("g:ViveBrowseDir")
+	let RTdirs=expand(&runtimepath)
+	if !exists("*StrListTok")
+		runtime plugin/vsutil.vim
+	endif
+	let RTdir=StrListTok(RTdirs,'b:rtdirs')
+	while RTdir != ''
+		if glob(RTdir) != ''
+			let g:ViveBrowseDir=RTdir
+			break
+		endif
+		let RTdir=StrListTok('','b:rtdirs')
+	endwhile
+	while RTdir != ''
+		let RTdir=StrListTok('','b:rtdirs')
+	endwhile
+	unlet b:rtdirs
+endif
+if !exists("g:ViveFileDir")
+	let g:ViveFileDir=fnamemodify(expand("~"),":p:h")
+endif
 if !exists("g:ViveFile")
-	let g:ViveFile=fnamemodify(expand("~/.Vive.vim"),":p")
+	let g:ViveFile=fnamemodify(expand(g:ViveFileDir."/.Vive.vim"),":p")
 endif
 if !exists("g:ViveRsltFile")
-	let g:ViveRsltFile=fnamemodify(expand("~/.ViveRsltFile"),":p")
+	let g:ViveRsltFile=fnamemodify(expand(g:ViveFileDir."/.ViveRsltFile"),":p")
+endif
+if !exists("g:ViveVimVerboseFile")
+	let g:ViveVimVerboseFile=fnamemodify(expand(g:ViveFileDir."/.ViveVimVerboseFile"),":p")
 endif
 if !exists("g:VivePrmpt")
 	let g:VivePrmpt="Vive:"
@@ -57,6 +89,9 @@ endif
 if !exists("g:ViveVerbose")
 	let g:ViveVerbose=0
 endif
+if !exists("g:ViveVimVerbose")
+	let g:ViveVimVerbose=0
+endif
 if !exists("g:ViveHilite")
 	let g:ViveHilite='DiffAdd'
 endif
@@ -64,70 +99,276 @@ if !exists("g:ViveInterpret")
 	let g:ViveInterpret='<S-Enter>'
 endif
 if !exists("g:ViveDVive")
-	let g:ViveDVive='/v'
+	let g:ViveDVive="zv"
 endif
 if !exists("g:ViveDRslt")
-	let g:ViveDRslt='/r'
+	let g:ViveDRslt="zr"
 endif
 if !exists("g:ViveDAR")
-	let g:ViveDAR='/a'
+	let g:ViveDAR="za"
 endif
 if !exists("g:ViveCLS")
-	let g:ViveCLS='/c'
+	let g:ViveCLS="zc"
 endif
 if !exists("g:ViveModeInsert")
 	let g:ViveModeInsert=1
 endif
 if !exists("g:ViveTI")
-	let g:ViveTI='/i'
+	let g:ViveTI="zi"
 endif
 if !exists("g:ViveDBG")
-	let g:ViveDBG='/d'
+	let g:ViveDBG="zd"
 endif
 if !exists("g:ViveDebug")
 	let g:ViveDebug=0
 endif
 if !exists("g:ViveQQ")
-	let g:ViveQQ='??'
+	let g:ViveQQ='z?'
 endif
 
+let g:firstDbgMdMenuCall=1
+
 function! s:doGvimMenu()
-	if has("gui_running")
-		amenu &Vive.&Usage<Tab>?? :call <SID>usage()<CR>
-		let s:menuIt='amenu &Vive.Delete\ Vive\ &Statement<TAB>'.g:ViveDVive.' :call <SID>deleteLast("v")<CR>' 
-		execute s:menuIt
-		let s:menuIt='amenu &Vive.Delete\ Vive\ Statement\ &Results<TAB>'.g:ViveDRslt.' :call <SID>deleteLast("r")<CR>' 
-		execute s:menuIt
-		let s:menuIt='amenu &Vive.Delete\ &All\ Vive\ Statement\ Results<TAB>'.g:ViveDAR.' :call <SID>deleteAllRslt()<CR>' 
-		execute s:menuIt
-		let s:menuIt='amenu &Vive.&Clear\ Vive\ Window<TAB>'.g:ViveCLS.' :call <SID>cls()<CR>' 
-		execute s:menuIt
-		function! s:doMenuIfInsert()
-			let g:ViveModeInsert=1-g:ViveModeInsert
-			DoIfInsert
-			if !g:ViveModeInsert
-				:stopinsert
-				" clear call to this function from command line
-				execute "normal \<C-L>"
+	let s:menuIt='amenu &Vive.Delete\ Vive\ &Statement<TAB>'.g:ViveDVive.' :call <SID>deleteLast("v")<CR>' 
+	execute s:menuIt
+	let s:menuIt='amenu &Vive.Delete\ Vive\ Statement\ &Results<TAB>'.g:ViveDRslt.' :call <SID>deleteLast("r")<CR>' 
+	execute s:menuIt
+	let s:menuIt='amenu &Vive.Delete\ &All\ Vive\ Statement\ Results<TAB>'.g:ViveDAR.' :call <SID>deleteAllRslt()<CR>' 
+	execute s:menuIt
+	let s:menuIt='amenu &Vive.&Clear\ Vive\ Window<TAB>'.g:ViveCLS.' :call <SID>cls()<CR>' 
+	execute s:menuIt
+	function! s:doMenuIfInsert()
+		let g:ViveModeInsert=1-g:ViveModeInsert
+		DoIfInsert
+		if !g:ViveModeInsert
+			:stopinsert
+			" clear call to this function from command line
+			execute "normal \<C-L>"
+		endif
+	endfunction
+	let s:menuIt='amenu &Vive.Toggle\ &Insert\ Mode<TAB>'.g:ViveTI.' :call <SID>doMenuIfInsert()<CR>'
+	execute s:menuIt
+	let s:menuIt='amenu &Vive.&Usage<TAB>'.g:ViveQQ.' :call <SID>usage()<CR>'
+	execute s:menuIt
+	if has("browse")
+		function! s:browser(Exec)
+			let fname=browse(0,'Read File into Vive',g:ViveBrowseDir,'')
+			if fname != ''
+				execute ':'.line('.')-1.'r '.fname
+				if a:Exec
+					:call s:GetViveLines()
+				endif
 			endif
 		endfunction
-		let s:menuIt='amenu &Vive.Toggle\ &Insert\ Mode<TAB>'.g:ViveTI.' :call <SID>doMenuIfInsert()<CR>'
-		execute s:menuIt
-		let s:menuIt='amenu &Vive.Toggle\ &Debug\ Mode<TAB>'.g:ViveDBG.' :let g:ViveDebug=1-g:ViveDebug<CR>'
-		execute s:menuIt
-		amenu &Vive.Set\ &Verbose.&0<TAB>ViveVbose\ 0 :ViveVbose 0<CR>
-		amenu &Vive.Set\ &Verbose.&1<TAB>ViveVbose\ 1 :ViveVbose 1<CR>
-		amenu &Vive.Set\ &Verbose.&2<TAB>ViveVbose\ 2 :ViveVbose 2<CR>
+		amenu &Vive.Read\ Script\ &File :call <SID>browser(0)<CR>
+		amenu &Vive.Execute\ Script\ &File :call <SID>browser(1)<CR>
 	endif
+	amenu &Vive.Set\ V&iveVbose.&0<TAB>:ViveVbose\ 0 :ViveVbose 0<CR>
+	amenu &Vive.Set\ V&iveVbose.&1<TAB>:ViveVbose\ 1 :ViveVbose 1<CR>
+	amenu &Vive.Set\ V&iveVbose.&2<TAB>:ViveVbose\ 2 :ViveVbose 2<CR>
+	function! s:doVimVerbose(lvl)
+		if a:lvl < 0
+			call delete(g:ViveVimVerboseFile)
+			return
+		endif
+		execute 'aunmenu &Vive.Vim\ &Verbose.Current\ Vim\ Verbose\ Level\ is\ '.&verbose
+		if a:lvl == 0
+			redir END
+			set more
+			set verbose=0
+			amenu &Vive.Vim\ &Verbose.Current\ Vim\ Verbose\ Level\ is\ 0 :<CR>
+			return
+		endif
+		set nomore
+		execute 'silent redir >>'.g:ViveVimVerboseFile
+		echomsg ">>>>> Setting verbose=".a:lvl." : ".strftime("%c")
+		execute 'set verbose='.a:lvl
+		execute 'amenu &Vive.Vim\ &Verbose.Current\ Vim\ Verbose\ Level\ is\ '.&verbose.' :<CR>'
+	endfunction
+	let VimVboseFile=escape(g:ViveVimVerboseFile,' \.')
+	amenu &Vive.Vim\ &Verbose.NOTE:\ Vim\ Verbose\ Mode\ output\ is :<CR>
+	execute 'amenu &Vive.Vim\ &Verbose.\ :redir\ >>'.VimVboseFile.' :<CR>'
+	amenu &Vive.Vim\ &Verbose.-Sep1- <Nop>
+	execute 'amenu &Vive.Vim\ &Verbose.&Delete\ '.VimVboseFile.' :call <SID>doVimVerbose(-1)<CR>'
+	amenu &Vive.Vim\ &Verbose.==&0\ off<TAB>:set\ verbose=0 :call <SID>doVimVerbose(0)<CR>
+	amenu &Vive.Vim\ &Verbose.>=&1\ r/w\ viminfo<TAB>:set\ verbose=1 :call <SID>doVimVerbose(1)<CR>
+	amenu &Vive.Vim\ &Verbose.>=&2\ source\ <file><TAB>:set\ verbose=2 :call <SID>doVimVerbose(2)<CR>
+	amenu &Vive.Vim\ &Verbose.>=&5\ search\ tags\ file<TAB>:set\ verbose\ 5 :call <SID>doVimVerbose(5)<CR>
+	amenu &Vive.Vim\ &Verbose.>=&8\ autocmd\ file<TAB>:set\ verbose=8 :call <SID>doVimVerbose(8)<CR>
+	amenu &Vive.Vim\ &Verbose.>=&9\ autocmd\ execution<TAB>:set\ verbose=9 :call <SID>doVimVerbose(9)<CR>
+	amenu &Vive.Vim\ &Verbose.>=&12\ function\ execution<TAB>:set\ verbose=12 :call <SID>doVimVerbose(12)<CR>
+	amenu &Vive.Vim\ &Verbose.>=&13\ exception\ execution<TAB>:set\ verbose=13 :call <SID>doVimVerbose(13)<CR>
+	amenu &Vive.Vim\ &Verbose.>=&14\ finally\ clause<TAB>:set\ verbose=14 :call <SID>doVimVerbose(14)<CR>
+	amenu &Vive.Vim\ &Verbose.>=&15\ ex\ command\ execution<TAB>:set\ verbose=15 :call <SID>doVimVerbose(15)<CR>
+	amenu &Vive.Vim\ &Verbose.-Sep2- <Nop>
+	execute 'amenu &Vive.Vim\ &Verbose.Current\ Vim\ Verbose\ Level\ is\ '.&verbose.' :<CR>'
+	amenu &Vive.&Debugging.Select\ Break\ to\ &Delete :call <SID>deselector()<CR>
+	amenu &Vive.&Debugging.Delete\ &All\ Breaks :call <SID>delbreaks()<CR>
+	function s:DoDebugModeMenu()
+		if !g:firstDbgMdMenuCall
+			if g:ViveDebug
+				let cMode='on'
+				amenu &Vive.Debug.Step step<CR>
+				amenu &Vive.Debug.Next next<CR>
+				amenu &Vive.Debug.Continue cont<CR>
+				amenu &Vive.Debug.Abort quit<CR>
+				amenu &Vive.Debug.Add\ Break\ In\ This\ Function
+					\ execute 'breakadd func '.strpart(matchstr(expand("<sfile>"),'\.\.\w*$'),2)<CR>
+				amenu &Vive.Debug.Delete\ Break\ In\ This\ Function
+					\ execute 'silent! breakdel func '.strpart(matchstr(expand("<sfile>"),'\.\.\w*$'),2)<CR>
+				:debugg
+				let b:DebugMenuExists=1
+			else
+				let cMode='off'
+				:0debugg
+			endif
+			execute ':aunmenu &Vive.&Debugging.Toggle\ Debug\ &Mode\ ['.cMode.']'
+			let g:ViveDebug=1-g:ViveDebug
+		else
+			let g:firstDbgMdMenuCall=0
+		endif
+		if g:ViveDebug
+			let cMode='on'
+			amenu &Vive.Debug.Step step<CR>
+			amenu &Vive.Debug.Next next<CR>
+			amenu &Vive.Debug.Continue cont<CR>
+			amenu &Vive.Debug.Abort quit<CR>
+			amenu &Vive.Debug.Add\ Break\ In\ This\ Function
+				\ execute 'breakadd func '.strpart(matchstr(expand("<sfile>"),'\.\.\w*$'),2)<CR>
+			amenu &Vive.Debug.Delete\ Break\ In\ This\ Function
+				\ execute 'silent! breakdel func '.strpart(matchstr(expand("<sfile>"),'\.\.\w*$'),2)<CR>
+			:debugg
+			let b:DebugMenuExists=1
+		else
+			let cMode='off'
+			:0debugg
+			if exists("b:DebugMenuExists") && b:DebugMenuExists
+				aunmenu &Vive.Debug
+				let b:DebugMenuExists=0
+			endif
+		endif
+		let s:menuIt=
+			\'amenu &Vive.&Debugging.Toggle\ Debug\ &Mode\ ['.cMode.']<TAB>'.
+			\g:ViveDBG.' :call <SID>DoDebugModeMenu()<CR>'
+		execute s:menuIt
+	endfunction
+	function! s:selector()
+		let tmpFile=expand(g:ViveFileDir.'/.ViveAddBrk.Tmp')
+		let tmpFile=fnamemodify(tmpFile,":p")
+		redir @z
+		silent function
+		redir END
+		if &verbose
+			execute 'silent redir >>'.g:ViveVimVerboseFile
+			echomsg ">>>>> Resetting redir for &verbose=".&verbose." : ".strftime("%c")
+		endif
+		let @z=substitute(@z,'function \|(\p*)','','g')
+		call delete(tmpFile)
+		:new
+		execute ':edit +set\ noswapfile '.tmpFile
+		setlocal modifiable
+		map <buffer> a :call <SID>selected()<CR>
+		:stopinsert
+		let @z=" Press 'a' on the line of function you wish to add a break to\<NL> Or on a non-function line for 'none'\<NL>".@z
+		silent put z
+		silent :%s/^\s*\n//g
+		:w
+		setlocal nomodifiable
+	endfunction
+	function! s:selected()
+		let tmpFile=expand(g:ViveFileDir.'/.ViveAddBrk.Tmp')
+		let tmpFile=fnamemodify(tmpFile,":p")
+		if match(getline('.'),'^ ') == -1
+			let funcName=expand("<cword>")
+			execute 'breakadd func '.funcName
+		endif
+		silent bw!
+		call delete(tmpFile)
+		DoIfInsert
+	endfunction
+	amenu &Vive.&Debugging.Select\ Function\ to\ &Add\ Break :call <SID>selector()<CR>
+	function! s:delbreaks()
+		let tmpFile=expand(g:ViveFileDir.'/.ViveDelBrk.Tmp')
+		let tmpFile=fnamemodify(tmpFile,":p")
+		redir @z
+		silent breaklist
+		redir END
+		if &verbose
+			execute 'silent redir >>'.g:ViveVimVerboseFile
+			echomsg ">>>>> Resetting redir for &verbose=".&verbose." : ".strftime("%c")
+		endif
+		call delete(tmpFile)
+		:new
+		execute ':edit +set\ noswapfile '.tmpFile
+		silent put z
+		silent :%s/^\s*\n//g
+		let eline=line('$')
+		let sline=1
+		while sline <= eline
+			let breakNum=substitute(getline(sline),'^\s\+','','')+0
+			if breakNum != 0
+				execute 'breakdel '.breakNum
+			endif
+			let sline=sline+1
+		endwhile
+		silent bw!
+		call delete(tmpFile)
+	endfunction
+	function! s:deselector()
+		let tmpFile=expand(g:ViveFileDir.'/.ViveDelBrk.Tmp')
+		let tmpFile=fnamemodify(tmpFile,":p")
+		redir @z
+		silent breaklist
+		redir END
+		if &verbose
+			execute 'silent redir >>'.g:ViveVimVerboseFile
+			echomsg ">>>>> Resetting redir for &verbose=".&verbose." : ".strftime("%c")
+		endif
+		call delete(tmpFile)
+		:new
+		execute ':edit +set\ noswapfile '.tmpFile
+		setlocal modifiable
+		map <buffer> d :call <SID>deselected()<CR>
+		:stopinsert
+		let @z=" Press 'd' on the line of the break you wish to delete\<NL> Or on a non-break point line for 'none'\<NL>".@z
+		silent put z
+		silent :%s/^\s*\n//g
+		:w
+		setlocal nomodifiable
+	endfunction
+	function! s:deselected()
+		let tmpFile=expand(g:ViveFileDir.'/.ViveDelBrk.Tmp')
+		let tmpFile=fnamemodify(tmpFile,":p")
+		let breakNum=substitute(getline('.'),'^\s\+','','')+0
+		if breakNum != 0
+			execute 'breakdel '.breakNum
+		endif
+		silent bw!
+		call delete(tmpFile)
+		DoIfInsert
+	endfunction
+	call s:DoDebugModeMenu()
 endfunction
 
 let s:thisScript=expand("<sfile>:p")
+
+let g:cmdlineHit=0
 
 augroup Vive
 	autocmd!
 	autocmd VimLeave * call s:isViveRunning(expand("<afile>"))
 	autocmd BufDelete * call s:isViveRunning(expand("<afile>"))
 augroup END
+
+function! s:doMap(name,val)
+	let sname='s:prev'.a:name
+	let siname='s:iprev'.a:name
+	let gname='g:Vive'.a:name
+	let {sname}=maparg({gname})
+	let {siname}=maparg({gname},'i')
+	execute 'map <silent> '.{gname}.' '.a:val.'<CR>'
+	execute 'imap <silent> '.{gname}.' <Esc>'.a:val.'<CR>'
+endfunction
 
 function! s:doUnMap(name)
 	let sname='s:prev'.a:name
@@ -216,7 +457,7 @@ function! s:usage()
 	echo "  -H          set highlight group for prompt/label to <HLGrp>"
 	echo "  -i          toggle insert mode (default is insert mode)"
 	echo "  -v          set verbose level to <vboseLvl>"
-	echo "  -h          produces this message {or press ??}"
+	echo "  -h          produces this message {or press ".g:ViveQQ."}"
 	echo "  You can set verbose on the fly with the command ViveVbose lvl"
 	echo "  Values set by the above switches may be set in your vimrc"
 	echo "  See: ".s:thisScript
@@ -246,16 +487,6 @@ function! s:usage()
 		DoIfInsert
 	endif
 	let &ch=savech
-endfunction
-
-function! s:doMap(name,val)
-	let sname='s:prev'.a:name
-	let siname='s:iprev'.a:name
-	let gname='g:Vive'.a:name
-	let {sname}=maparg({gname})
-	let {siname}=maparg({gname},'i')
-	execute 'map <silent> '.{gname}.' '.a:val.'<CR>'
-	execute 'imap <silent> '.{gname}.' <Esc>'.a:val.'<CR>'
 endfunction
 
 command! -nargs=1 ViveVbose let g:ViveVerbose=<args>
@@ -304,9 +535,11 @@ function! s:Vive(...)
 	call s:doMap('DAR',':call <SID>deleteAllRslt()')
 	call s:doMap('CLS',':call <SID>cls()')
 	call s:doMap('TI',':let g:ViveModeInsert=1-g:ViveModeInsert | DoIfInsert')
-	call s:doMap('DBG',':let g:ViveDebug=1-g:ViveDebug')
+	call s:doMap('DBG',':call <SID>DoDebugModeMenu()')
 	call s:doMap('QQ',':call <SID>usage()')
-	call s:doGvimMenu()
+	if has("gui_running")
+		call s:doGvimMenu()
+	endif
 	call s:delFile(g:ViveFile)
 	execute 'edit '.g:ViveFile
 	set hidden noswapfile nonumber buftype=help syntax=vim filetype=vim
@@ -430,14 +663,31 @@ function! s:RedirNoEcho()
 		if !g:ViveDebug
 			call ViveFunc()
 		else
+			:breakadd func ViveFunc
+			if has("gui_running")
+				call s:doGvimDebug()
+			endif
 			:debug call ViveFunc()
+			:silent! breakdel func ViveFunc
 		endif
 	endif
 	redir END
+	if &verbose
+		execute 'silent redir >>'.g:ViveVimVerboseFile
+		echomsg ">>>>> Resetting redir for &verbose=".&verbose." : ".strftime("%c")
+	endif
 	let &more=savemore
 	"this avoids the final 'Hit Enter' prompt if it's there.  For some reason
 	"'set nomore' doesn't turn the last one off.
 	execute line('$').' append | . '
+endfunction
+
+function! s:doGvimDebug()
+	if has("gui_win32")
+		tearoff &Vive.Debug
+	elseif has("gui_gtk")
+		popup &Vive.Debug
+	endif
 endfunction
 
 function! s:deleteLast(type)
