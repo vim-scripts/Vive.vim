@@ -14,6 +14,27 @@
 "  Added:
 "    -  Some new command line switches
 "    -  Performance enhancements
+"
+" Version 1.2
+"  Fixed:
+"    -  If command/function/script
+"       invoked from outside Vive
+"       requested input, Vive would
+"       halt with no indication.
+"       Removed 'silent' from Vive
+"       function call to correct.
+"     - Because Vive does a
+"       set buftype=help,
+"       if first command contained
+"       :r, redirect to g:ViveFile
+"       would trip a Warning message
+"       about changing a readonly
+"       file, but _only_ on the first
+"       command.  Now we do a :r
+"       command at startup to
+"       eliminate the problem.
+"       Not sure why this happens,
+"       it just does!:-<
 
 if !exists("g:ViveFile")
 	let g:ViveFile=fnamemodify(expand("~/.Vive.vim"),":p")
@@ -283,6 +304,12 @@ function! s:Vive(...)
 	call s:delFile(g:ViveFile)
 	execute 'edit '.g:ViveFile
 	set hidden noswapfile nonumber buftype=help syntax=vim filetype=vim
+	" do this little diddy because if the first redir to the file is a ':r',
+	" (which sets readonly???) it causes a Warning.
+	" So, we do it on purpose and correct the problem
+	silent :r !ls
+	normal u
+	set noreadonly
 	" Put the highlight link first to fool syntax clear into thinking we've got
 	" a group named VivePrmpt if one doesn't already exist.  It's cheaper
 	" than doing an hlexists() conditional, besides, we have to do the
@@ -368,22 +395,20 @@ function! s:RedirNoEcho()
 	let savemore=&more
 	set nomore
 	call s:delFile(g:ViveRsltFile)
-	execute 'redir >'.g:ViveRsltFile
+	execute 'redir! >'.g:ViveRsltFile
 	if g:ViveVerbose
 		echo "Function definition is:"
 		:function ViveFunc
 		echo " "
 	endif
 	if g:ViveVerbose <= 1
-		set nomodified
 		if !g:ViveDebug
-			silent call ViveFunc()
+			call ViveFunc()
 		else
 			:debug call ViveFunc()
 		endif
 	endif
 	redir END
-"	call s:isItMe()
 	let &more=savemore
 	"this avoids the final 'Hit Enter' prompt if it's there.  For some reason
 	"'set nomore' doesn't turn the last one off.
@@ -454,30 +479,6 @@ function! s:deleteAllRslt()
 	endwhile
 	normal G
 	DoIfInsert
-endfunction
-
-function! s:isItMe()
-	" find our window and move to it
-	let ViveWinnr=bufwinnr(g:ViveFile)
-	if ViveWinnr != -1
-		execute ViveWinnr.'wincmd w'
-	elseif fnamemodify(bufname(''),":p") != g:ViveFile
-		" if we're not in any window, put us in the current one. Some
-		" command/script that was executed via Vive probably splatted on top of
-		" Vive, now we need to go back to complete execution.
-		execute 'b'.bufnr(g:ViveFile)
-	endif
-	if fnamemodify(bufname(''),":p") == g:ViveFile
-		if &readonly
-			set noreadonly
-		endif
-	else
-		echoerr fnamemodify(s:thisScript,":t").": Cannot find buffer/window for Vive!!"
-		echohl Cursor
-		echomsg "        Press a key to continue"
-		echohl None
-		call getchar()
-	endif
 endfunction
 
 function! s:delFile(fname)
