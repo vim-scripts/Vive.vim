@@ -157,7 +157,7 @@ p.syntax, li.syntax, div.syntax
 	page-break-after:avoid;
 	font-size:10.0pt;
 	font-family:"Courier New";
-	color:maroon;
+	color:navy;
 	font-weight:bold;}
 p.argDef, li.argDef, div.argDef
 	{
@@ -206,7 +206,7 @@ p.example, li.example, div.example
 	page-break-after:avoid;
 	font-size:10.0pt;
 	font-family:"Courier New";
-	color:maroon;
+	color:navy;
 	font-weight:bold;}
 p.gVar, li.gVar, div.gVar
 	{
@@ -257,18 +257,24 @@ style='color:maroon'>Vive</span></b> buffer.</p>
 <p class=MsoPlainText>&nbsp;</p>
 
 <p class=DispTxt>You invoke <b><span style='color:maroon'>Vive</span></b> via a
-<b><span style='color:#333399'>user-defined command</span></b>.  The command takes several command line
-arguments, which tailor <b><span style='color:maroon'>Vive</span></b> to your
-tastes for a particular session.  Global
-variables also exist to do the same tailoring and more for universal usage.</p>
+<b><span style='color:#333399'>user-defined command</span></b><span
+style='color:black'> from the Vim command line or from a system command line as
+an argument to vim/gvim</span>.  For
+example, from a shell in UNIX or the command prompt in Windows:</p>
+
+<p class=syntax style='line-height:150%'>[g]vim –c Vive</p>
+
+<p class=DispTxt>The command takes several command line arguments, which tailor
+<b><span style='color:maroon'>Vive</span></b> to your tastes for a particular
+session.  Global variables also exist to
+do the same tailoring and more for universal usage.</p>
 
 <p class=DispTxt>The syntax for the command is as follows.</p>
 
-<p class=syntax>Vive<span style='color:black'>[</span> <span style='color:blue'>-p
-&lt;prmpt&gt;</span><span style='color:black'>][</span> <span style='color:
-blue'>-r &lt;rsltLbl&gt;</span><span style='color:black'>][</span> <span
-style='color:blue'>-t &lt;mapSeq&gt;</span><span style='color:black'>][</span> <span
-style='color:blue'>-H &lt;HLGrp&gt;</span><span style='color:black'>]</span></p>
+<p class=syntax><span style='color:maroon'>Vive</span>[ <span style='color:
+blue'>-p &lt;prmpt&gt;</span>][ <span style='color:blue'>-r &lt;rsltLbl&gt;</span>][
+<span style='color:blue'>-t &lt;mapSeq&gt;</span>][ <span style='color:blue'>-H
+&lt;HLGrp&gt;</span>]</p>
 
 <p class=syntaxDesc style='text-indent:.5in'><span style='color:black'>[</span>
 <span style='color:blue'>-i</span><span style='color:black'>][</span> <span
@@ -421,7 +427,10 @@ style='color:green'>.</span></p>
 <p class=DispTxt>&nbsp;</p>
 
 <p class=DispTxt>When run in <b><span style='color:#333399'>gvim</span></b>, <b><span
-style='color:maroon'>Vive</span></b> sets up a menu.  It covers the basic command key strokes and setting verbose mode.</p>
+style='color:maroon'>Vive</span></b> sets up a menu when it’s invoked and upon
+exit from <b><span style='color:maroon'>Vive</span></b> the menu is
+removed.  It covers the basic command
+key strokes and setting verbose mode.</p>
 
 <p class=MsoPlainText>&nbsp;</p>
 
