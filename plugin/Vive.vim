@@ -1,14 +1,25 @@
 " Vim plugin for Vim interpreter and virtual executor
 " Language:    vim script
 " Maintainer:  Dave Silvia <dsilvia@mchsi.com>
-" Date:        8/17/2004
+" Date:        8/19/2004
 "
 "
 " Version 1.0 initial release
 "
+" Version 1.1
+"  Fixed:
+"    -  Problem with multiple windows
+"       putting the 'Results:' label
+"       in the wrong window.
+"  Added:
+"    -  Some new command line switches
+"    -  Performance enhancements
 
 if !exists("g:ViveFile")
 	let g:ViveFile=fnamemodify(expand("~/.Vive.vim"),":p")
+endif
+if !exists("g:ViveRsltFile")
+	let g:ViveRsltFile=fnamemodify(expand("~/.ViveRsltFile"),":p")
 endif
 if !exists("g:VivePrmpt")
 	let g:VivePrmpt="Vive:"
@@ -26,22 +37,28 @@ if !exists("g:ViveInterpret")
 	let g:ViveInterpret='<S-Enter>'
 endif
 if !exists("g:ViveDVive")
-	let g:ViveDVive='dv'
+	let g:ViveDVive='/v'
 endif
 if !exists("g:ViveDRslt")
-	let g:ViveDRslt='dr'
+	let g:ViveDRslt='/r'
 endif
 if !exists("g:ViveDAR")
-	let g:ViveDAR='dar'
+	let g:ViveDAR='/a'
 endif
 if !exists("g:ViveCLS")
-	let g:ViveCLS='cls'
+	let g:ViveCLS='/c'
 endif
 if !exists("g:ViveModeInsert")
 	let g:ViveModeInsert=1
 endif
 if !exists("g:ViveTI")
-	let g:ViveTI='ti'
+	let g:ViveTI='/i'
+endif
+if !exists("g:ViveDBG")
+	let g:ViveDBG='/d'
+endif
+if !exists("g:ViveDebug")
+	let g:ViveDebug=0
 endif
 
 function! s:doGvimMenu()
@@ -66,6 +83,8 @@ function! s:doGvimMenu()
 		endfunction
 		let s:menuIt='amenu &Vive.Toggle\ &Insert\ Mode<TAB>'.g:ViveTI.' :call <SID>doMenuIfInsert()<CR>'
 		execute s:menuIt
+		let s:menuIt='amenu &Vive.Toggle\ &Debug\ Mode<TAB>'.g:ViveDBG.' :let g:ViveDebug=1-g:ViveDebug<CR>'
+		execute s:menuIt
 		amenu &Vive.Set\ &Verbose.&0<TAB>ViveVbose\ 0 :ViveVbose 0<CR>
 		amenu &Vive.Set\ &Verbose.&1<TAB>ViveVbose\ 1 :ViveVbose 1<CR>
 		amenu &Vive.Set\ &Verbose.&2<TAB>ViveVbose\ 2 :ViveVbose 2<CR>
@@ -76,13 +95,11 @@ let s:thisScript=expand("<sfile>:p")
 
 augroup Vive
 	autocmd!
-	autocmd VimLeave * call s:isViveRunning("VimLeave",expand("<afile>"))
-	autocmd BufDelete * call s:isViveRunning("BufDelete",expand("<afile>"))
+	autocmd VimLeave * call s:isViveRunning(expand("<afile>"))
+	autocmd BufDelete * call s:isViveRunning(expand("<afile>"))
 augroup END
 
-function! s:isViveRunning(whom,file)
-"echomsg "Called by ".a:whom." for <".a:file.">"
-"call getchar()
+function! s:isViveRunning(file)
 	if !exists("g:ViveRunning") || a:file != g:ViveFile
 		return
 	endif
@@ -90,62 +107,118 @@ function! s:isViveRunning(whom,file)
 		aunmenu &Vive
 	endif
 	execute 'bwipeout '.bufnr(g:ViveFile)
-	call delete(g:ViveFile)
+	call s:delFile(g:ViveFile)
 	delcommand DoIfInsert
 	execute 'unmap '.g:ViveInterpret
 	if s:prevInterpret != ''
+		if match(s:prevInterpret,'|') != -1
+			let s:prevInterpret=substitute(s:prevInterpret,'|','|','g')
+		endif
 		execute 'map '.g:ViveInterpret.' '.s:prevInterpret
 	endif
 	execute 'iunmap '.g:ViveInterpret
 	if s:iprevInterpret != ''
+		if match(s:iprevInterpret,'|') != -1
+			let s:iprevInterpret=substitute(s:iprevInterpret,'|','|','g')
+		endif
 		execute 'imap '.g:ViveInterpret.' '.s:iprevInterpret
 	endif
 	execute 'unmap '.g:ViveDVive
 	if s:prevDVive != ''
+		if match(s:prevDVive,'|') != -1
+			let s:prevDVive=substitute(s:prevDVive,'|','|','g')
+		endif
 		execute 'map '.g:ViveDVive.' '.s:prevDVive
 	endif
 	execute 'iunmap '.g:ViveDVive
 	if s:iprevDVive != ''
+		if match(s:iprevDVive,'|') != -1
+			let s:iprevDVive=substitute(s:iprevDVive,'|','|','g')
+		endif
 		execute 'imap '.g:ViveDVive.' '.s:iprevDVive
 	endif
 	execute 'unmap '.g:ViveDRslt
 	if s:prevDRslt != ''
+		if match(s:prevDRslt,'|') != -1
+			let s:prevDRslt=substitute(s:prevDRslt,'|','|','g')
+		endif
 		execute 'map '.g:ViveDRslt.' '.s:prevDRslt
 	endif
 	execute 'iunmap '.g:ViveDRslt
 	if s:iprevDRslt != ''
+		if match(s:iprevDRslt,'|') != -1
+			let s:iprevDRslt=substitute(s:iprevDRslt,'|','|','g')
+		endif
 		execute 'imap '.g:ViveDRslt.' '.s:iprevDRslt
 	endif
 	execute 'unmap '.g:ViveDAR
 	if s:prevDAR != ''
+		if match(s:prevDAR,'|') != -1
+			let s:prevDAR=substitute(s:prevDAR,'|','|','g')
+		endif
 		execute 'map '.g:ViveDAR.' '.s:prevDAR
 	endif
 	execute 'iunmap '.g:ViveDAR
 	if s:iprevDAR != ''
+		if match(s:iprevDAR,'|') != -1
+			let s:iprevDAR=substitute(s:iprevDAR,'|','|','g')
+		endif
 		execute 'imap '.g:ViveDAR.' '.s:iprevDAR
 	endif
 	execute 'unmap '.g:ViveCLS
 	if s:prevCLS != ''
+		if match(s:prevCLS,'|') != -1
+			let s:prevCLS=substitute(s:prevCLS,'|','|','g')
+		endif
 		execute 'map '.g:ViveCLS.' '.s:prevCLS
 	endif
 	execute 'iunmap '.g:ViveCLS
 	if s:iprevCLS != ''
+		if match(s:iprevCLS,'|') != -1
+			let s:iprevCLS=substitute(s:iprevCLS,'|','|','g')
+		endif
 		execute 'imap '.g:ViveCLS.' '.s:iprevCLS
 	endif
 	execute 'unmap '.g:ViveTI
 	if s:prevTI != ''
+		if match(s:prevTI,'|') != -1
+			let s:prevTI=substitute(s:prevTI,'|','|','g')
+		endif
 		execute 'map '.g:ViveTI.' '.s:prevTI
 	endif
 	execute 'iunmap '.g:ViveTI
 	if s:iprevTI != ''
+		if match(s:iprevTI,'|') != -1
+			let s:iprevTI=substitute(s:iprevTI,'|','|','g')
+		endif
 		execute 'imap '.g:ViveTI.' '.s:iprevTI
+	endif
+	execute 'unmap '.g:ViveDBG
+	if s:prevDBG != ''
+		if match(s:prevDBG,'|') != -1
+			let s:prevDBG=substitute(s:prevDBG,'|','|','g')
+		endif
+		execute 'map '.g:ViveDBG.' '.s:prevDBG
+	endif
+	execute 'iunmap '.g:ViveDBG
+	if s:iprevDBG != ''
+		if match(s:iprevDBG,'|') != -1
+			let s:iprevDBG=substitute(s:iprevDBG,'|','|','g')
+		endif
+		execute 'imap '.g:ViveDBG.' '.s:iprevDBG
 	endif
 	unmap ??
 	if s:prevqq != ''
+		if match(s:prevqq,'|') != -1
+			let s:prevqq=substitute(s:prevqq,'|','|','g')
+		endif
 		execute 'map ?? '.s:prevqq
 	endif
 	iunmap ??
 	if s:iprevqq != ''
+		if match(s:iprevqq,'|') != -1
+			let s:iprevqq=substitute(s:iprevqq,'|','|','g')
+		endif
 		execute 'imap ?? '.s:iprevqq
 	endif
 	unlet g:ViveRunning
@@ -183,6 +256,10 @@ function! s:usage()
 	while strlen(TI) < 14
 		let TI=TI.' '
 	endwhile
+	let DBG='  '.g:ViveDBG
+	while strlen(DBG) < 14
+		let DBG=DBG.' '
+	endwhile
 	echomsg " "
 	echohl Title
 	echomsg "              Vim interpreter and virtual executor"
@@ -215,6 +292,7 @@ function! s:usage()
 	echomsg DAR."to delete results of all Vive statements"
 	echomsg CLS."to clear the interpreter buffer"
 	echomsg TI."to toggle insert mode (default is insert mode)"
+	echomsg DBG."to toggle debug mode (default is no debug mode)"
 	echomsg " "
 	echohl Cursor
 	echomsg "        Press a key to continue"
@@ -292,12 +370,16 @@ function! s:Vive(...)
 	let s:iprevTI=maparg(g:ViveTI,'i')
 	execute 'map <silent> '.g:ViveTI.' :let g:ViveModeInsert=1-g:ViveModeInsert | DoIfInsert<CR>'
 	execute 'imap <silent> '.g:ViveTI.' <Esc>:let g:ViveModeInsert=1-g:ViveModeInsert | DoIfInsert<CR>'
+	let s:prevDBG=maparg(g:ViveDBG)
+	let s:iprevDBG=maparg(g:ViveDBG,'i')
+	execute 'map <silent> '.g:ViveDBG.' :let g:ViveDebug=1-g:ViveDebug<CR>'
+	execute 'imap <silent> '.g:ViveDBG.' <Esc>:let g:ViveDebug=1-g:ViveDebug<CR>'
 	let s:prevqq=maparg('??')
 	let s:iprevqq=maparg('??','i')
 	map <silent> ?? :call <SID>usage()<CR>
 	imap <silent> ?? <Esc>:call <SID>usage()<CR>
 	call s:doGvimMenu()
-	call delete(g:ViveFile)
+	call s:delFile(g:ViveFile)
 	execute 'edit '.g:ViveFile
 	set hidden noswapfile nonumber buftype=help syntax=vim filetype=vim
 	" Put the highlight link first to fool syntax clear into thinking we've got
@@ -318,6 +400,9 @@ function! s:Vive(...)
 	DoIfInsert
 endfunction
 
+" elnum == ending line number
+" clnum == current line number
+" olnum == origin line number
 function! s:GetViveLines()
 	let elnum=search('^\('.g:ViveRslt.'\|'.g:VivePrmpt.'\)$\|\%$','W')
 	if elnum == 0
@@ -330,44 +415,38 @@ function! s:GetViveLines()
 	let olnum=elnum
 	let clnum=search('^'.g:VivePrmpt.'$','bW')
 	let clnum=clnum+1
-	let Func=''
-	while clnum <= elnum
-		let cline=getline(clnum)
-		let Func=Func.cline."\<NL>"
-		let clnum=clnum+1
-	endwhile
-	let funcBody=substitute(Func,"\<NL>\\+$",'','')
+	execute clnum.','.elnum.'yank "'
+	let funcBody=substitute(@","\<NL>\\+$",'','')
 	if funcBody =~ '^\s*$'
 		normal j
 		DoIfInsert
 		return
 	endif
-	let Func="function! ViveFunc()\<NL>".Func."endfunction\<NL>"
-	silent edit +set\ hidden\ noswapfile\ nobuflisted tmpFunc
-	let @z=Func
-	silent normal "zP
-	silent :w
-	silent source %
-	set nomodified
-	silent bwipeout
-	call delete('tmpFunc')
+	let @"="function! ViveFunc()\<NL>".@"."endfunction\<NL>"
+	silent :@"
 	execute 'normal '.olnum.'G'
 	normal o
 	let olnum=olnum+1
 	let clnum=line('.')
 	call setline(clnum,g:ViveRslt)
-	call s:RedirNoEcho(g:ViveVerbose)
+	call s:RedirNoEcho()
 	delfunction ViveFunc
 	execute 'normal '.olnum.'G'
-	normal o
-	silent normal "zp
-	let slnum=search('^\('.g:ViveRslt.'\|'.g:VivePrmpt.'\)$\|\%$','W')
-	if slnum == 0
-		let slnum=line('$')
-	elseif slnum != line('$')
-		let slnum=slnum-1
+	let saveCPO=&cpoptions
+	"don't need any compatibility options to read the file
+	set cpoptions=
+	execute 'silent :r '.g:ViveRsltFile
+	"reading the file sets readonly; correct this
+	set noreadonly
+	let &cpoptions=saveCPO
+	call s:delFile(g:ViveRsltFile)
+	let elnum=search('^\('.g:ViveRslt.'\|'.g:VivePrmpt.'\)$\|\%$','W')
+	if elnum == 0
+		let elnum=line('$')
+	elseif elnum != line('$')
+		let elnum=elnum-1
 	endif
-	execute 'normal '.slnum.'G'
+	execute 'normal '.elnum.'G'
 	normal o
 	let clnum=line('.')
 	if clnum == line('$')
@@ -384,19 +463,26 @@ function! s:GetViveLines()
 	DoIfInsert
 endfunction
 
-function! s:RedirNoEcho(verbose)
+function! s:RedirNoEcho()
 	let savemore=&more
 	set nomore
-	silent redir @z
-	if a:verbose
+	call s:delFile(g:ViveRsltFile)
+	execute 'redir >'.g:ViveRsltFile
+	if g:ViveVerbose
 		echo "Function definition is:"
 		:function ViveFunc
 		echo " "
 	endif
-	if a:verbose <= 1
-		call ViveFunc()
+	if g:ViveVerbose <= 1
+		set nomodified
+		if !g:ViveDebug
+			call ViveFunc()
+		else
+			:debug call ViveFunc()
+		endif
 	endif
 	redir END
+	call s:isItMe()
 	let &more=savemore
 	"this avoids the final 'Hit Enter' prompt if it's there.  For some reason
 	"'set nomore' doesn't turn the last one off.
@@ -467,4 +553,46 @@ function! s:deleteAllRslt()
 	endwhile
 	normal G
 	DoIfInsert
+endfunction
+
+function! s:isItMe()
+	" find our window and move to it
+	let ViveWinnr=bufwinnr(g:ViveFile)
+	if ViveWinnr != -1
+		execute ViveWinnr.'wincmd w'
+	elseif bufname('') != g:ViveFile
+		" if we're not in any window, put us in the current one. Some
+		" command/script that was executed via Vive probably splatted on top of
+		" Vive, now we need to go back to complete execution.
+		execute 'b'.bufnr(g:ViveFile)
+	endif
+	if bufname('') == g:ViveFile
+		if &readonly
+			set noreadonly
+		endif
+	else
+		echoerr fnamemodify(s:thisScript,":t").": Cannot find buffer/window for Vive!!"
+		echohl Cursor
+		echomsg "        Press a key to continue"
+		echohl None
+		call getchar()
+	endif
+endfunction
+
+function! s:delFile(fname)
+	let fname=glob(a:fname)
+	if fname == ''
+		return
+	endif
+	let failure=delete(fname)
+	if !failure
+		return
+	endif
+	echohl Warningmsg
+	echomsg expand("<sfile>").": Could not delete <".fname.">"
+	echomsg "Reason: ".v:exception
+	echohl Cursor
+	echomsg "        Press a key to continue"
+	echohl None
+	call getchar()
 endfunction
